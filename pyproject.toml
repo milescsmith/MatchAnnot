@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "matchannot"
+version = "0.1.0"
+description = "Match transcripts from Isoseq data with a genomic reference"
+authors = ["Tom Skelly <thomas.skelly@nih.gov>"]
+license = "GPL-3.0"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+click = "^8.0.1"
+matplotlib = "^3.4.2"
+numpy = "^1.21.0"
+
+[tool.poetry.dev-dependencies]
+pyre-check = "^0.9.3"
+flake8 = "^3.9.2"
+black = "^21.6b0"
+isort = "^5.9.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
