@@ -6,16 +6,18 @@ authors = ["Tom Skelly <thomas.skelly@nih.gov>"]
 license = "GPL-3.0"
 
 [tool.poetry.dependencies]
-python = "^3.8"
-click = "^8.0.1"
+python = ">=3.8,<3.10"
 matplotlib = "^3.4.2"
 numpy = "^1.21.0"
+typer = "^0.3.2"
+coloredlogs = "^15.0.1"
 
 [tool.poetry.dev-dependencies]
 pyre-check = "^0.9.3"
 flake8 = "^3.9.2"
 black = "^21.6b0"
 isort = "^5.9.2"
+pytype = "^2021.6.17"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
