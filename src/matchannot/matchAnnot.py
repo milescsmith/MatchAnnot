@@ -10,7 +10,6 @@
 # AUTHOR: Tom Skelly (thomas.skelly@fnlcr.nih.gov)
 
 import optparse
-import pickle
 import re  # regular expressions
 import sys
 
@@ -211,7 +210,7 @@ def main():
             if bestHit.value >= 3:
                 delta5 = bestTran[0].start - exons[0].start  # 5' delta
                 delta3 = bestTran[-1].end - exons[-1].end  # 3' delta
-                print(f" 5-3: {delta5} {delta3}"),
+                print((f" 5-3: {delta5} {delta3}"), end=" ")
 
             totWithGene += 1
             totByScore[bestHit.value] += 1
@@ -231,7 +230,7 @@ def main():
     if opt.clusters is not None:
         for cellNo, cell in clusterList.showCells():
             print(f"summary:   cell {int(cellNo)} = {cell}")
-        print
+        print()
 
     print(f"summary: {int(totReads)} isoforms read")
     print(
@@ -570,7 +569,7 @@ def printClusterReads(clusterList, clusterName):
         flag = "cl-FL:" if FL == "FL" else "cl-nfl:"  # shorten 'nonFL' to 'nfl'
         for ix in range(0, len(reads), CL_PER_LINE):  # print N reads to the line
             print(f"{flag} {int(cellNo)}")
-            print("  ".join([f"{x}" for x in reads[ix : ix + CL_PER_LINE]]))
+            print(("  ".join([f"{x}" for x in reads[ix : ix + CL_PER_LINE]])))
 
 
 def getParms():  # use default input sys.argv[1:]

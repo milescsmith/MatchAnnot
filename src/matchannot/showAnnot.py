@@ -4,83 +4,95 @@
 
 # AUTHOR: Tom Skelly (thomas.skelly@fnlcr.nih.gov)
 
-import os
-import sys
 import optparse
-import re        # regular expressions
-import cPickle as pickle
+import pickle as pickle
 
-from tt_log import logger
-import Annotations as anno
+from matchannot import matchannot_logger as logger
 
-VERSION = '20150417.01'
+from . import Annotations as anno
 
-def main ():
+VERSION = "20150417.01"
 
-    logger.debug('version %s starting' % VERSION)
+
+def main():
+
+    logger.debug(f"version {VERSION} starting")
 
     opt, args = getParms()
 
     if opt.gtfpickle is not None:
-        handle = open (opt.gtfpickle, 'r')
-        pk = pickle.Unpickler (handle)
+        handle = open(opt.gtfpickle, "r")
+        pk = pickle.Unpickler(handle)
         annotList = pk.load()
         handle.close()
     else:
-        annotList   = anno.AnnotationList (opt.gtf)
+        annotList = anno.AnnotationList(opt.gtf)
 
-    geneList = annotList.getGene (opt.gene)
+    geneList = annotList.getGene(opt.gene)
     if geneList is None:
-        print 'gene %s not found in annotations' % opt.gene
+        print(f"gene {opt.gene} not found in annotations")
     elif len(geneList) != 1:
-        print 'there are %d occurrences of gene %s in annotations' % (len(geneList), opt.gene)
+        print(
+            "there are %d occurrences of gene %s in annotations"
+            % (len(geneList), opt.gene)
+        )
     else:
         geneEnt = geneList[0]
 
-        print 'gene:    ',
-        printEnt (geneEnt)
+        print("gene:    ", end=" ")
+        printEnt(geneEnt)
 
         for transEnt in geneEnt.getChildren():
-            print '\ntr:      ',
-            printTran (transEnt)
+            print("\ntr:      ", end=" ")
+            printTran(transEnt)
 
             for exonEnt in transEnt.getChildren():
-                print 'exon:    ',
-                printEnt (exonEnt)
+                print("exon:    ", end=" ")
+                printEnt(exonEnt)
 
-    logger.debug('finished')
-
-    return
-
-def printEnt (ent):
-
-    print '%-15s  %9d  %9d  %6d' % (ent.name, ent.start, ent.end, ent.end-ent.start+1)
+    logger.debug("finished")
 
     return
 
-def printTran (ent):
 
-    print '%-15s  %9d  %9d  %6d' % (ent.name, ent.start, ent.end, ent.end-ent.start+1),
-    if hasattr (ent, 'startcodon'):
-        print ' start: %9d' % ent.startcodon,
-    if hasattr (ent, 'stopcodon'):
-        print ' stop:  %9d' % ent.stopcodon,
-    print
+def printEnt(ent):
+
+    print(
+        "%-15s  %9d  %9d  %6d" % (ent.name, ent.start, ent.end, ent.end - ent.start + 1)
+    )
 
     return
 
-def getParms ():                       # use default input sys.argv[1:]
 
-    parser = optparse.OptionParser(usage='%prog [options] <fasta_file> ... ')
+def printTran(ent):
 
-    parser.add_option ('--gtf',       help='annotations in gtf format')
-    parser.add_option ('--gtfpickle', help='annotations in pickled gtf format')
-    parser.add_option ('--gene',      help='gene to print')
+    print(
+        "%-15s  %9d  %9d  %6d"
+        % (ent.name, ent.start, ent.end, ent.end - ent.start + 1),
+        end=" ",
+    )
+    if hasattr(ent, "startcodon"):
+        print(f" start: {int(ent.startcodon):9}", end=" ")
+    if hasattr(ent, "stopcodon"):
+        print(f" stop:  {int(ent.stopcodon):9}", end=" ")
+    print()
 
-    parser.set_defaults (gtf=None,
-                         gtfpickle=None,
-                         gene=None,
-                         )
+    return
+
+
+def getParms():  # use default input sys.argv[1:]
+
+    parser = optparse.OptionParser(usage="%prog [options] <fasta_file> ... ")
+
+    parser.add_option("--gtf", help="annotations in gtf format")
+    parser.add_option("--gtfpickle", help="annotations in pickled gtf format")
+    parser.add_option("--gene", help="gene to print")
+
+    parser.set_defaults(
+        gtf=None,
+        gtfpickle=None,
+        gene=None,
+    )
 
     opt, args = parser.parse_args()
 

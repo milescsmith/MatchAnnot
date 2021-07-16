@@ -38,158 +38,170 @@
 # end of the read are examined. The window size is a command-line
 # parameter.
 
-import os
-import sys
 import optparse
-import re        # regular expressions
 import string
 
-from tt_log import logger
-import Reference as ref
-import SWAligner
+from matchannot import matchannot_logger as logger
 
-VERSION = '20150406.01'
+from . import Reference as ref
+from . import SWAligner
+
+VERSION = "20150406.01"
 
 TICK = 100
 FASTA_WRAP = 70
-MIN_SCORE  = 15
+MIN_SCORE = 15
 THRESH_VALUE = 0.6
-COMPLTAB   = string.maketrans ('ACGTacgt', 'TGCAtgca')         # for reverse-complementing reads
+COMPLTAB = string.maketrans("ACGTacgt", "TGCAtgca")  # for reverse-complementing reads
 
-def main ():
 
-    logger.debug('version %s starting' % VERSION)
+def main():
+
+    logger.debug(f"version {VERSION} starting")
 
     opt, args = getParms()
 
-    if opt.format == 'pickle':
-        reads = ref.Reference.fromPickle (opt.input)
+    if opt.format == "pickle":
+        reads = ref.Reference.fromPickle(opt.input)
     else:
-        reads = ref.Reference (opt.input)
+        reads = ref.Reference(opt.input)
 
-    primers = ref.Reference (opt.primers)
+    primers = ref.Reference(opt.primers)
 
     aln = SWAligner.Aligner()
-    
+
     report = None
     if opt.report is not None:
-        report = open (opt.report, 'w')
+        report = open(opt.report, "w")
 
-    numReads = 0                                   # counter
+    numReads = 0  # counter
 
-    for chr in reads.chromosomes():                # process all the reads
+    for chr in reads.chromosomes():  # process all the reads
 
         readIn = reads.sequence(chr)
-        aln.setRef (readIn)
+        aln.setRef(readIn)
         numReads += 1
         if numReads % TICK == 0:
-            logger.debug('tick %6d %s' % (numReads, chr))
+            logger.debug(f"tick {int(numReads):6} {chr}")
 
         if report is not None:
-            report.write ('>%s  %d\n' % (chr, len(readIn)))
+            report.write(f">{chr}  {int(len(readIn))}\n")
 
-        for pri in primers.chromosomes():          # for each read, look at all the primers
+        for pri in primers.chromosomes():  # for each read, look at all the primers
 
             forPri = primers.sequence(pri)
             revPri = forPri[::-1].translate(COMPLTAB)
 
-            if pri[0] == 'F':
+            if pri[0] == "F":
 
-                trim = tryPrimer ('-', forPri, pri, aln, report)
+                trim = tryPrimer("-", forPri, pri, aln, report)
                 if trim > 0:
-                    readIn = readIn[ trim : ]         # trim the read
-                    aln.setRef (readIn)               # update the aligner's target read if changed
+                    readIn = readIn[trim:]  # trim the read
+                    aln.setRef(readIn)  # update the aligner's target read if changed
 
-                trim = tryPrimer ('+', revPri, pri, aln, report)
+                trim = tryPrimer("+", revPri, pri, aln, report)
                 if trim > 0:
-                    readIn = readIn[ : trim ]
-                    aln.setRef (readIn)
-                    
-            elif pri[0] == 'R':
+                    readIn = readIn[:trim]
+                    aln.setRef(readIn)
 
-                trim = tryPrimer ('+', forPri, pri, aln, report)
+            elif pri[0] == "R":
+
+                trim = tryPrimer("+", forPri, pri, aln, report)
                 if trim > 0:
-                    readIn = readIn[ : trim ]
-                    aln.setRef (readIn)
-                    
-                trim = tryPrimer ('-', revPri, pri, aln, report)
+                    readIn = readIn[:trim]
+                    aln.setRef(readIn)
+
+                trim = tryPrimer("-", revPri, pri, aln, report)
                 if trim > 0:
-                    readIn = readIn[ trim : ]
-                    aln.setRef (readIn)
+                    readIn = readIn[trim:]
+                    aln.setRef(readIn)
 
             else:
-                raise RuntimeError ('primer name %s does not begin with F or R' % pri)
+                raise RuntimeError(f"primer name {pri} does not begin with F or R")
 
-        writeFasta (chr, readIn)
+        writeFasta(chr, readIn)
 
     if report is not None:
         report.close()
 
-    logger.debug('finished')
+    logger.debug("finished")
 
     return
 
-def tryPrimer (dir, primerIn, primerName, aln, report):
 
-    aln.setRead (primerIn)
+def tryPrimer(dir, primerIn, primerName, aln, report):
+
+    aln.setRead(primerIn)
     score = aln.fillMatrix()
     trim = 0
 
     if score >= MIN_SCORE:
 
         allScores = aln.allScores()
-        matchScore = aln.getPenalties()[0]             # score increment for a match
+        matchScore = aln.getPenalties()[0]  # score increment for a match
         peakThresh = int(len(primerIn) * matchScore * THRESH_VALUE)
         peakList = list()
 
         for peak in aln.peakPosits(thresh1=peakThresh):
 
-            peakList.append (peak)
+            peakList.append(peak)
 
             if report is not None:
-                readStr, primerStr = aln.alignmentStrings(pos=peak+1)
-                report.write ( '%-10s  %s  %7d  %3d  %s\n' % (primerName, dir, peak, allScores[peak], readStr))
-                report.write ( '                             %s\n' % primerStr)
+                readStr, primerStr = aln.alignmentStrings(pos=peak + 1)
+                report.write(
+                    "%-10s  %s  %7d  %3d  %s\n"
+                    % (primerName, dir, peak, allScores[peak], readStr)
+                )
+                report.write(f"                             {primerStr}\n")
 
         if len(peakList) > 1:
 
-            if dir == '+':
+            if dir == "+":
 
-                trim = peakList[0] + 1               # +1: we want to keep readIn[trim]
+                trim = peakList[0] + 1  # +1: we want to keep readIn[trim]
                 if report is not None:
-                    report.write ('clipped %s+ at %d\n' % (primerName, trim))
+                    report.write(f"clipped {primerName}+ at {int(trim)}\n")
 
             else:
 
-                readStr, primerStr = aln.alignmentStrings(pos=peakList[-1]+1)
-                backup = len(readStr) - readStr.count('-')
+                readStr, primerStr = aln.alignmentStrings(pos=peakList[-1] + 1)
+                backup = len(readStr) - readStr.count("-")
                 trim = peakList[-1] - backup + 1
                 if report is not None:
-                    report.write ('clipped %s- at %d  %d\n' % (primerName, trim, backup))
+                    report.write(
+                        f"clipped {primerName}- at {int(trim)}  {int(backup)}\n"
+                    )
 
     return trim
 
-def writeFasta (chr, readIn):
 
-    print '>' + chr
+def writeFasta(chr, readIn):
 
-    for ix in xrange(0, len(readIn), FASTA_WRAP):
-        print readIn[ix:ix+FASTA_WRAP]
+    print(f">{chr}")
+
+    for ix in range(0, len(readIn), FASTA_WRAP):
+        print(readIn[ix : ix + FASTA_WRAP])
 
     return
 
-def getParms ():                       # use default input sys.argv[1:]
 
-    parser = optparse.OptionParser(usage='%prog [options]', version=VERSION)
+def getParms():  # use default input sys.argv[1:]
 
-    parser.add_option ('--input',     help='reference file, in format specified by --format')
-    parser.add_option ('--format',    help='format of reference file (def: %default)', \
-                           type='choice', choices=['standard', 'fasta', 'pickle'])      # 'standard' is the same as 'fasta'
-    parser.add_option ('--primers',   help='fasta file containing primers (required)')
-    parser.add_option ('--report' ,   help='output report file name (optional)')
+    parser = optparse.OptionParser(usage="%prog [options]", version=VERSION)
 
-    parser.set_defaults (format='fasta',
-                         )
+    parser.add_option("--input", help="reference file, in format specified by --format")
+    parser.add_option(
+        "--format",
+        help="format of reference file (def: %default)",
+        type="choice",
+        choices=["standard", "fasta", "pickle"],
+    )  # 'standard' is the same as 'fasta'
+    parser.add_option("--primers", help="fasta file containing primers (required)")
+    parser.add_option("--report", help="output report file name (optional)")
+
+    parser.set_defaults(
+        format="fasta",
+    )
 
     opt, args = parser.parse_args()
 
